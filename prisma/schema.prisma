@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   @default("MITARBEITER")
+  createdAt    DateTime @default(now())
+
+  termine      Termin[]
+}
+
+model Kunde {
+  id         String    @id @default(cuid())
+  vorname    String
+  nachname   String
+  email      String?
+  telefon    String?
+  geburtstag DateTime?
+  notizen    String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  termine    Termin[]
+  rechnungen Rechnung[]
+}
+
+model Leistung {
+  id           String   @id @default(cuid())
+  name         String
+  beschreibung String?
+  dauer        Int
+  preis        Float
+  aktiv        Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  terminLeistungen  TerminLeistung[]
+  rechnungsPosten   RechnungsPosten[]
+}
+
+model Termin {
+  id            String   @id @default(cuid())
+  startzeit     DateTime
+  endzeit       DateTime
+  status        String   @default("GEPLANT")
+  notizen       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  kundeId       String
+  kunde         Kunde    @relation(fields: [kundeId], references: [id])
+
+  mitarbeiterId String?
+  mitarbeiter   User?    @relation(fields: [mitarbeiterId], references: [id])
+
+  leistungen    TerminLeistung[]
+  rechnung      Rechnung?
+}
+
+model TerminLeistung {
+  id            String   @id @default(cuid())
+  terminId      String
+  termin        Termin   @relation(fields: [terminId], references: [id], onDelete: Cascade)
+  leistungId    String
+  leistung      Leistung @relation(fields: [leistungId], references: [id])
+  preisSnapshot Float
+
+  @@unique([terminId, leistungId])
+}
+
+model Rechnung {
+  id                String    @id @default(cuid())
+  rechnungsnummer   String    @unique
+  ausstellungsDatum DateTime  @default(now())
+  faelligkeitsDatum DateTime?
+  status            String    @default("OFFEN")
+  zahlungsart       String?
+  gesamtbetrag      Float
+  notizen           String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  kundeId           String
+  kunde             Kunde     @relation(fields: [kundeId], references: [id])
+
+  terminId          String?   @unique
+  termin            Termin?   @relation(fields: [terminId], references: [id])
+
+  posten            RechnungsPosten[]
+}
+
+model RechnungsPosten {
+  id           String    @id @default(cuid())
+  bezeichnung  String
+  menge        Int       @default(1)
+  einzelpreis  Float
+  gesamtpreis  Float
+
+  rechnungId   String
+  rechnung     Rechnung  @relation(fields: [rechnungId], references: [id], onDelete: Cascade)
+
+  leistungId   String?
+  leistung     Leistung? @relation(fields: [leistungId], references: [id])
+}
